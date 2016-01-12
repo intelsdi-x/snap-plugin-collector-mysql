@@ -58,11 +58,21 @@ func gauge(val interface{}) Stat {
 
 type Stats map[string]Stat
 
+func (self Stats) AddAll(st Stats) {
+	for k, v := range st {
+		self[k] = v
+	}
+}
+
 func parseVersion(s string) uint {
 	dotsStr := strings.Split(strings.TrimSpace(s), "-")[0]
 	var a, b, c uint
 	fmt.Sscanf(dotsStr, "%d.%d.%d", &a, &b, &c)
 	return a*10000 + b*100 + c
+}
+
+var sqlOpen = func(driverName, dataSourceName string) (*sql.DB, error) {
+	return sql.Open(driverName, dataSourceName)
 }
 
 type MySQLStats struct {
@@ -75,7 +85,7 @@ type MySQLStats struct {
 
 func New(connectionString string) (*MySQLStats, error) {
 	var err error
-	db, err := sql.Open("mysql", connectionString)
+	db, err := sqlOpen("mysql", connectionString)
 	if err != nil {
 		return nil, fmt.Errorf("sql open failed: %v", err)
 	}
@@ -112,10 +122,10 @@ func New(connectionString string) (*MySQLStats, error) {
 	if ver >= 50600 {
 		res.supportsInnodb = true
 		res.innodb, err = db.Prepare("SELECT name, count, type FROM information_schema.innodb_metrics WHERE status = 'enabled'")
-	}
 
-	if err != nil {
-		return nil, fmt.Errorf("cannot prepare innodb statement: %v", err)
+		if err != nil {
+			return nil, fmt.Errorf("cannot prepare innodb statement: %v", err)
+		}
 	}
 
 	res.master, err = db.Prepare("SHOW MASTER STATUS")
@@ -127,7 +137,6 @@ func New(connectionString string) (*MySQLStats, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot prepare slave status statement: %v", err)
 	}
-
 	return res, nil
 
 }

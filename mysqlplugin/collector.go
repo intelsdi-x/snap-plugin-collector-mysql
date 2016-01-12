@@ -83,8 +83,11 @@ func val(s stats.Stat) interface{} {
 	}
 }
 
+// for unit testing
+var timeNow = func() time.Time { return time.Now() }
+
 func (self *metricCollector) updateStats(res map[string]interface{}, st stats.Stats) {
-	t := time.Now()
+	t := timeNow()
 	for k, v := range st {
 		if v.Type == stats.TYPE_GAUGE {
 			res[k] = val(v)
