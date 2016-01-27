@@ -1,0 +1,15 @@
+{
+	"ImportPath": "github.com/intelsdi-x/snap-plugin-collector-mysql",
+	"GoVersion": "go1.5",
+	"Deps": [
+		{
+			"ImportPath": "github.com/go-sql-driver/mysql",
+			"Comment": "v1.2-156-g7c7f556",
+			"Rev": "7c7f556282622f94213bc028b4d0a7b6151ba239"
+		},
+		{
+			"ImportPath": "github.com/intelsdi-x/snap-plugin-utilities",
+			"Rev": "f6ebcc7cdefd9a74e256187e638ad6fa62487629"
+		}
+	]
+}
