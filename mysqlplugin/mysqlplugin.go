@@ -1,3 +1,22 @@
+/*
+http://www.apache.org/licenses/LICENSE-2.0.txt
+
+
+Copyright 2016 Intel Corporation
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package mysqlplugin
 
 import (
@@ -52,6 +71,10 @@ type MySQLPlugin struct {
 	mysql collector
 }
 
+// for mocking
+var makeStats = func(connectionString string) (mysqlSource, error) { return stats.New(connectionString) }
+var makeCollector = func(statsSource mysqlSource, useInnodb bool) collector { return NewCollector(statsSource, useInnodb) }
+
 func (p *MySQLPlugin) init(cfg interface{}) error {
 	p.initializedMutex.Lock()
 	defer p.initializedMutex.Unlock()
@@ -66,17 +89,22 @@ func (p *MySQLPlugin) init(cfg interface{}) error {
 		panic(fmt.Errorf("plugin initalization failed : [%v]", err))
 	}
 
-	sqlStats, err := stats.New(cfgItems["mysql_connection_string"].(string))
+	sqlStats, err := makeStats(cfgItems["mysql_connection_string"].(string))
 
 	if err != nil {
 		return err
 	}
 
-	p.mysql = NewCollector(sqlStats, cfgItems["mysql_use_innodb"].(bool))
+	p.mysql = makeCollector(sqlStats, cfgItems["mysql_use_innodb"].(bool))
 
 	metrics, err := p.mysql.Discover()
 	if err != nil {
-		sqlStats.Close()
+
+		// for easier mocking
+		if sqlStats != nil {
+			sqlStats.Close()
+		}
+
 		return err
 	}
 

@@ -23,86 +23,292 @@ package mysqlplugin
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/intelsdi-x/snap/control/plugin"
+	"github.com/intelsdi-x/snap/control/plugin/cpolicy"
+	"github.com/intelsdi-x/snap/core/cdata"
+	"github.com/intelsdi-x/snap/core/ctypes"
+
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
+
+	"github.com/stretchr/testify/mock"
+
+	"github.com/intelsdi-x/snap-plugin-collector-mysql/stats"
 )
 
-type MySQLPluginSuite struct {
-	suite.Suite
+type nullSqlsource struct {
 }
 
-func (suite *MySQLPluginSuite) TearDownSuite() {}
+func (self *nullSqlsource) GetStatus(parseInnodb bool) (stats.Stats, error) {
+	return nil, nil
+}
+func (self *nullSqlsource) GetInnodb() (stats.Stats, error) {
+	return nil, nil
+}
+func (self *nullSqlsource) GetMasterStatus() (stats.Stats, error) {
+	return nil, nil
+}
+func (self *nullSqlsource) GetSlaveStatus() (stats.Stats, error) {
+	return nil, nil
+}
+func (self *nullSqlsource) Close() error {
+	return nil
+}
 
-func (suite *MySQLPluginSuite) SetupSuite() {}
+type collectorMock struct {
+	mock.Mock
+}
 
-func (suite *MySQLPluginSuite) TestGetMetricTypes() {
-	Convey("Given MySQL plugin initialized", mps.T(), func() {
-		mySQLPlugin := New()
+func (self *collectorMock) Discover() ([]metric, error) {
+	args := self.Called()
+	var r0 []metric = nil
+	if args.Get(0) != nil {
+		r0 = args.Get(0).([]metric)
+	}
+	return r0, args.Error(1)
+}
 
-		Convey("When one wants to get list of available meterics", func() {
-			mts, err := mySQLPlugin.GetMetricTypes(plugin.PluginConfigType{})
+func (self *collectorMock) Collect(metrics map[int]bool) (map[string]interface{}, error) {
+	args := self.Called(metrics)
+	var r0 map[string]interface{} = nil
+	if args.Get(0) != nil {
+		r0 = args.Get(0).(map[string]interface{})
+	}
+	return r0, args.Error(1)
+}
 
-			Convey("Then error should not be reported", func() {
-				So(err, ShouldBeNil)
-			})
+func testingConfig() (cfg1 plugin.PluginConfigType, cfg2 *cdata.ConfigDataNode) {
+	cfg1 = plugin.NewPluginConfigType()
+	cfg2 = cdata.NewNode()
+	cfg1.AddItem("mysql_connection_string", ctypes.ConfigValueStr{Value: "root:r00tme@tcp(localhost:3306)/"})
+	cfg2.AddItem("mysql_connection_string", ctypes.ConfigValueStr{Value: "root:r00tme@tcp(localhost:3306)/"})
 
-			Convey("Then list of metrics is returned", func() {
-				So(len(mts), ShouldEqual, 12)
+	cfg1.AddItem("mysql_use_innodb", ctypes.ConfigValueBool{Value: true})
+	cfg2.AddItem("mysql_use_innodb", ctypes.ConfigValueBool{Value: true})
 
-				namespaces := []string{}
-				for _, m := range mts {
-					namespaces = append(namespaces, strings.Join(m.Namespace(), "/"))
+	return
+}
+
+func TestGetMetricTypes(t *testing.T) {
+	Convey("GetMetricTypes", t, func() {
+
+		orgMakeStats := makeStats
+		orgMakeCollector := makeCollector
+
+		Reset(func() {
+
+			makeCollector = orgMakeCollector
+			makeStats = orgMakeStats
+
+		})
+
+		mock := &collectorMock{}
+
+		makeStats = func(connectionString string) (mysqlSource, error) { return new(nullSqlsource), nil }
+		makeCollector = func(statsSource mysqlSource, useInnodb bool) collector { return mock }
+
+		cfg1, _ := testingConfig()
+
+		sut := New()
+
+		Convey("if initalization succeeds", func() {
+
+			mock.On("Discover").Return([]metric{metric{Name: "aaa/bbb", Call: 1}, metric{Name: "x/y/z", Call: 2}}, nil)
+
+			dut, dut_err := sut.GetMetricTypes(cfg1)
+
+			Convey("returns complete list of metrics", func() {
+
+				content := map[string]bool{}
+
+				for _, v := range dut {
+					content[strings.Join(v.Namespace(), "/")] = true
 				}
 
-				So(namespaces, ShouldContain, "intel")
+				So(content["intel/mysql/aaa/bbb"], ShouldBeTrue)
+				So(content["intel/mysql/x/y/z"], ShouldBeTrue)
 
 			})
+
+			Convey("and no error", func() {
+
+				So(dut_err, ShouldBeNil)
+
+			})
+
 		})
+
+		Convey("if initialization fails", func() {
+
+			Convey("on stats construction", func() {
+
+				makeStats = func(connectionString string) (mysqlSource, error) { return nil, smthErr }
+
+				_, dut_err := sut.GetMetricTypes(cfg1)
+
+				Convey("error is returned", func() {
+
+					So(dut_err, ShouldNotBeNil)
+
+				})
+
+			})
+
+			Convey("on discovery", func() {
+
+				mock.On("Discover").Return(nil, smthErr)
+
+				_, dut_err := sut.GetMetricTypes(cfg1)
+
+				Convey("error is returned", func() {
+					So(dut_err, ShouldNotBeNil)
+				})
+
+			})
+
+		})
+
 	})
 }
 
-func (suite *MySQLPluginSuite) TestCollectMetrics() {
-	Convey("Given MySQL plugin initlialized", suite.T(), func() {
-		mySQLPlugin := New()
+func TestCollectMetrics(t *testing.T) {
+	Convey("CollectMetrics", t, func() {
 
-		Convey("When one wants to get values for given metric types", func() {
-			mTypes := []plugin.PluginMetricType{
-				plugin.PluginMetricType{Namespace_: []string{"intel"}},
+		orgMakeStats := makeStats
+		orgMakeCollector := makeCollector
+
+		Reset(func() {
+
+			makeCollector = orgMakeCollector
+			makeStats = orgMakeStats
+
+		})
+
+		mocked := &collectorMock{}
+
+		makeStats = func(connectionString string) (mysqlSource, error) { return new(nullSqlsource), nil }
+		makeCollector = func(statsSource mysqlSource, useInnodb bool) collector { return mocked }
+
+		_, cfg2 := testingConfig()
+
+		sut := New()
+
+		mts10 := make([]plugin.PluginMetricType, 10)
+		metrics10 := make([]metric, 10)
+
+		for i, _ := range mts10 {
+			mts10[i] = plugin.PluginMetricType{Namespace_: []string{"intel", "mysql", fmt.Sprintf("stat%d", i)}, Config_: cfg2}
+			metrics10[i] = metric{Name: fmt.Sprintf("stat%d", i), Call: i}
+
+		}
+
+		Convey("performs init even if GetMetricTypes was not called", func() {
+
+			mts := []plugin.PluginMetricType{
+				plugin.PluginMetricType{Namespace_: []string{"intel", "mysql", "aaa", "bbb"}, Config_: cfg2},
 			}
 
-			metrics, err := mySQLPlugin.CollectMetrics(mTypes)
+			mocked.On("Discover").Return([]metric{metric{Name: "aaa/bbb", Call: 1}, metric{Name: "x/y/z", Call: 2}}, nil)
+			mocked.On("Collect", mock.Anything).Return(nil, smthErr)
 
-			Convey("Then no erros should be reported", func() {
-				So(err, ShouldBeNil)
-			})
+			sut.CollectMetrics(mts)
 
-			Convey("Then proper metrics values are returned", func() {
-				So(len(metrics), ShouldEqual, 4)
-
-				stats := map[string]uint64{}
-				for _, m := range metrics {
-					n := strings.Join(m.Namespace(), "/")
-					v, ok := m.Data().(uint64)
-					if ok {
-						stats[n] = v
-					}
-				}
-
-				assert.Equal(suite.T(), len(metrics), len(stats))
-
-				So(stats["intel"], ShouldEqual, suite.cache*1024)
-			})
+			mocked.AssertCalled(t, "Discover")
 
 		})
+
+		Convey("requests all required calls", func() {
+
+			var dut interface{}
+			mocked.On("Discover").Return(metrics10, nil)
+			mocked.On("Collect", mock.Anything).Return(nil, smthErr).Run(func(args mock.Arguments) {
+				dut = args.Get(0)
+			})
+
+			sut.CollectMetrics(mts10)
+
+			for i, _ := range mts10 {
+				So(dut.(map[int]bool)[i], ShouldBeTrue)
+			}
+
+		})
+
+		Convey("omits uneccessary calls", func() {
+
+			for i, _ := range mts10 {
+				newMts := []plugin.PluginMetricType{}
+				newMts = append(newMts, mts10[0:i]...)
+				newMts = append(newMts, mts10[i+1:]...)
+
+				var dut interface{}
+				*mocked = collectorMock{}
+				mocked.On("Discover").Return(metrics10, nil)
+				mocked.On("Collect", mock.Anything).Return(nil, smthErr).Run(func(args mock.Arguments) {
+					dut = args.Get(0)
+				})
+
+				sut.CollectMetrics(newMts)
+				mocked.AssertCalled(t, "Collect", mock.Anything)
+				So(dut.(map[int]bool)[i], ShouldBeFalse)
+
+			}
+
+		})
+
+		Convey("exposes correct data", func() {
+
+			mocked.On("Discover").Return(metrics10, nil)
+			result := map[string]interface{}{}
+
+			for _, v := range metrics10 {
+				result[v.Name] = 100 + v.Call
+			}
+
+			mocked.On("Collect", mock.Anything).Return(result, nil)
+
+			dut, _ := sut.CollectMetrics(mts10)
+
+			vals := map[string]interface{}{}
+			for _, v := range dut {
+				vals[strings.Join(v.Namespace(), "/")] = v.Data()
+			}
+
+			for _, v := range metrics10 {
+				So(vals["intel/mysql/"+v.Name], ShouldEqual, 100+v.Call)
+				result[v.Name] = 100 + v.Call
+			}
+
+		})
+
+		Convey("returns error if collection failed", func() {
+
+			mocked.On("Discover").Return(metrics10, nil)
+			mocked.On("Collect", mock.Anything).Return(nil, smthErr)
+
+			_, dut_err := sut.CollectMetrics(mts10)
+
+			So(dut_err, ShouldNotBeNil)
+
+		})
+
 	})
 }
 
-func TestMySQLPluginSuite(t *testing.T) {
-	suite.Run(t, &MySQLPluginSuite{})
+func TestGetConfigPolicy(t *testing.T) {
+	Convey("GetConfigPolicy", t, func() {
+		sut := New()
+		dut, dutErr := sut.GetConfigPolicy()
+		Convey("Returns correct type", func() {
+			So(dut, ShouldHaveSameTypeAs, &cpolicy.ConfigPolicy{})
+		})
+		Convey("Is not nil", func() {
+			So(dut, ShouldNotBeNil)
+		})
+
+		Convey("Returns no error", func() {
+			So(dutErr, ShouldBeNil)
+		})
+	})
 }
