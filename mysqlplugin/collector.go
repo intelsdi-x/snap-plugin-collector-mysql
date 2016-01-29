@@ -39,16 +39,22 @@ type mysqlSource interface {
 	Close() error
 }
 
+// metric contains name of metric and id of call that collects particular
+// metric.
 type metric struct {
 	Name string
 	Call int
 }
 
+// metricValue holds value of metric and time of last collection.
 type metricValue struct {
 	Value          int64
 	CollectionTime time.Time
 }
 
+// metricCollector implements logic for discovering available metrics
+// and associated quieries, performing given set of queries and performing
+// rate calculation.
 type metricCollector struct {
 	StatsSource mysqlSource
 	UseInnodb   bool
@@ -56,12 +62,18 @@ type metricCollector struct {
 	counters map[string]metricValue
 }
 
+// addMetrics appends metric names from st to dst array setting Call
+// field to given value.
 func addMetrics(dst *[]metric, st stats.Stats, call int) {
 	for k, _ := range st {
 		*dst = append(*dst, metric{Name: k, Call: call})
 	}
 }
 
+// Discover performs metric discovery. Returns valid metric names and associated
+// Call id's. If mandatory request fails error is returned. No error is returned
+// when master or slave stats can't be read because server may not be configured
+// to work in master-slave mode.
 func (self *metricCollector) Discover() ([]metric, error) {
 	res := []metric{}
 
@@ -95,6 +107,8 @@ func (self *metricCollector) Discover() ([]metric, error) {
 
 }
 
+// helper func that converts Stat to nullable value.
+// Returns Stat.Value or nil.
 func val(s stats.Stat) interface{} {
 	if s.IsNull {
 		return nil
@@ -106,6 +120,10 @@ func val(s stats.Stat) interface{} {
 // for unit testing
 var timeNow = func() time.Time { return time.Now() }
 
+// updateStats adds metrics from st to res. While gauges are copied as they are, values for
+// conters and derives are differentiated and represents rate of change in time.
+// If counter or derive is collected first time (or last time was null)
+// it's rate equals to raw value as it was gauge.
 func (self *metricCollector) updateStats(res map[string]interface{}, st stats.Stats) {
 	t := timeNow()
 	for k, v := range st {
@@ -137,6 +155,9 @@ func (self *metricCollector) updateStats(res map[string]interface{}, st stats.St
 	}
 }
 
+// Collect performs given set of calls (indicated by true value in metrics map).
+// returns map of metric values (accessible by metric name). If any of requesed
+// calls fail error is returned.
 func (self *metricCollector) Collect(metrics map[int]bool) (map[string]interface{}, error) {
 
 	res := map[string]interface{}{}
@@ -180,6 +201,9 @@ func (self *metricCollector) Collect(metrics map[int]bool) (map[string]interface
 	return res, nil
 }
 
+// NewCollector constructs new metricCollector that will query given statsSource.
+// useInnodb indicates if innodb statistics are gathered (and gathering will
+// fail if they are unavailable).
 func NewCollector(statsSource mysqlSource, useInnodb bool) *metricCollector {
 	self := new(metricCollector)
 	self.counters = map[string]metricValue{}
