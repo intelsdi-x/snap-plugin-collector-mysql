@@ -43,8 +43,11 @@ const (
 	Type = plugin.CollectorPluginType
 )
 
+// prefix of all namespaces
 var namespacePrefix = []string{"intel", "mysql"}
 
+// makeName makes namespace from metric path (with segments separated by '/' ) and
+// namespace prefix
 func makeName(m string) []string {
 	res := []string{}
 	res = append(res, namespacePrefix...)
@@ -53,6 +56,8 @@ func makeName(m string) []string {
 	return res
 }
 
+// parseName extracts metric path from namespace by trimming prefix and concatenating
+// remaining segments with '/'.
 func parseName(ns []string) string {
 	return strings.Join(ns[len(namespacePrefix):], "/")
 }
@@ -62,6 +67,7 @@ type collector interface {
 	Collect(metrics map[int]bool) (map[string]interface{}, error)
 }
 
+// MySQLPlugin is implementation of plugin.Plugin interface.
 type MySQLPlugin struct {
 	initialized      bool
 	initializedMutex *sync.Mutex
@@ -75,6 +81,9 @@ type MySQLPlugin struct {
 var makeStats = func(connectionString string) (mysqlSource, error) { return stats.New(connectionString) }
 var makeCollector = func(statsSource mysqlSource, useInnodb bool) collector { return NewCollector(statsSource, useInnodb) }
 
+// init performs one time initialization of plugin. Reads configuration from cfg
+// and constructs all service objets that will be used during plugin's lifetime.
+// returns error if initialization failed.
 func (p *MySQLPlugin) init(cfg interface{}) error {
 	p.initializedMutex.Lock()
 	defer p.initializedMutex.Unlock()
@@ -116,6 +125,10 @@ func (p *MySQLPlugin) init(cfg interface{}) error {
 	return nil
 }
 
+// CollectMetrics finds required request ids required to collect given metrics,
+// asks collector service for metrics associated with these calls and returns
+// requested metrics. Error is returned when metric collection failed or plugin
+// initialization was unsuccessful.
 func (p *MySQLPlugin) CollectMetrics(mts []plugin.PluginMetricType) ([]plugin.PluginMetricType, error) {
 
 	if len(mts) > 0 {
@@ -161,6 +174,8 @@ func (p *MySQLPlugin) CollectMetrics(mts []plugin.PluginMetricType) ([]plugin.Pl
 	return results, nil
 }
 
+// GetMetricTypes returns list of available metrics. If initialization failed
+// error is returned.
 func (p *MySQLPlugin) GetMetricTypes(cfg plugin.PluginConfigType) ([]plugin.PluginMetricType, error) {
 	err := p.init(cfg)
 

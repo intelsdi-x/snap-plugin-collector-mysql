@@ -43,12 +43,18 @@ const (
 	SLAVE_SECONDS_BEHIND_IDX      = 32
 )
 
+// Stat describes single statistics.
+// Value holds stat value.
+// Type is either TYPE_GAUGE, TYPE_DERIVE or TYPE_COUNTER.
+// IsNull indicates if value is null.
 type Stat struct {
 	Value  int64
 	Type   int
 	IsNull bool
 }
 
+// toInt converts value to regardless of underlying type.
+// Can handle (u)int[8/16/32/64] and varchar string if it's numeric.
 func toInt(ifc interface{}) int64 {
 	if ifc == nil {
 		return 0
@@ -63,26 +69,26 @@ func toInt(ifc interface{}) int64 {
 	return reflect.ValueOf(ifc).Convert(reflect.TypeOf(int64(0))).Int()
 }
 
+// counter fills Stat structure appriopriately for counter type.
 func counter(val interface{}) Stat {
 	return Stat{Value: toInt(val), Type: TYPE_COUNTER, IsNull: val == nil}
 }
 
+// derive fills Stat structure appriopriately for derive type.
 func derive(val interface{}) Stat {
 	return Stat{Value: toInt(val), Type: TYPE_DERIVE, IsNull: val == nil}
 }
 
+// gauge fills Stat structure appriopriately for gauge type.
 func gauge(val interface{}) Stat {
 	return Stat{Value: toInt(val), Type: TYPE_GAUGE, IsNull: val == nil}
 }
 
+// Stats is collection of statistics accessible by name (which may include '/').
 type Stats map[string]Stat
 
-func (self Stats) AddAll(st Stats) {
-	for k, v := range st {
-		self[k] = v
-	}
-}
-
+// parses version string returned by mysql to numeric value.
+// ex. 1.2.3 is conveted to 10203.
 func parseVersion(s string) uint {
 	dotsStr := strings.Split(strings.TrimSpace(s), "-")[0]
 	var a, b, c uint
@@ -90,10 +96,12 @@ func parseVersion(s string) uint {
 	return a*10000 + b*100 + c
 }
 
+// for mocking
 var sqlOpen = func(driverName, dataSourceName string) (*sql.DB, error) {
 	return sql.Open(driverName, dataSourceName)
 }
 
+// MySQLStats implements statistics gathering from MySQL database.
 type MySQLStats struct {
 	db             *sql.DB
 	version        uint
@@ -102,6 +110,9 @@ type MySQLStats struct {
 	stats, innodb, master, slave *sql.Stmt
 }
 
+// New constructs MySQLStats object, returns error when fails.
+// connectionString is passed to sql.Open(), please refer to sql module
+// documentation to learn about syntax.
 func New(connectionString string) (*MySQLStats, error) {
 	var err error
 	db, err := sqlOpen("mysql", connectionString)
@@ -160,6 +171,9 @@ func New(connectionString string) (*MySQLStats, error) {
 
 }
 
+// GetStatus queries database for status (query is dependendt on mysql version).
+// If query succeeded appriopriate collection of stats is returned, otherwise
+// error is returned.
 func (self *MySQLStats) GetStatus(parseInnodb bool) (Stats, error) {
 	rows, err := self.stats.Query()
 	if err != nil {
@@ -302,6 +316,9 @@ func (self *MySQLStats) GetStatus(parseInnodb bool) (Stats, error) {
 
 }
 
+// GetInnodb queries database for innodb statistics.
+// If query succeeded appriopriate collection of stats is returned, otherwise
+// error is returned.
 func (self *MySQLStats) GetInnodb() (Stats, error) {
 	if !self.supportsInnodb {
 		return nil, fmt.Errorf("innodb stats not supported on current version of mysql server")
@@ -448,6 +465,9 @@ func (self *MySQLStats) GetInnodb() (Stats, error) {
 
 }
 
+// GetMasterStatus queries database for statistics related to it's master role.
+// If query succeeded appriopriate collection of stats is returned, otherwise
+// error is returned.
 func (self *MySQLStats) GetMasterStatus() (Stats, error) {
 	rows, err := self.master.Query()
 	if err != nil {
@@ -471,6 +491,9 @@ func (self *MySQLStats) GetMasterStatus() (Stats, error) {
 	return nil, fmt.Errorf("master request returned 0 rows")
 }
 
+// GetSlaveStatus queries database for statistics related to it's slave role.
+// If query succeeded appriopriate collection of stats is returned, otherwise
+// error is returned.
 func (self *MySQLStats) GetSlaveStatus() (Stats, error) {
 	rows, err := self.slave.Query()
 	if err != nil {
@@ -511,6 +534,7 @@ func (self *MySQLStats) GetSlaveStatus() (Stats, error) {
 	return nil, fmt.Errorf("slave request returned 0 rows")
 }
 
+// Close closes sql resources.
 func (self *MySQLStats) Close() error {
 	return self.db.Close()
 }
