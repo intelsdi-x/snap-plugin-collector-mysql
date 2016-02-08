@@ -167,8 +167,8 @@ func TestDiscover(t *testing.T) {
 						content[v] = true
 					}
 
-					So(content[metric{Name: "global/stat1", Call: CALL_GLOBAL}], ShouldBeTrue)
-					So(content[metric{Name: "global/stat2", Call: CALL_GLOBAL}], ShouldBeTrue)
+					So(content[metric{Name: "global/stat1", Call: callGlobal}], ShouldBeTrue)
+					So(content[metric{Name: "global/stat2", Call: callGlobal}], ShouldBeTrue)
 
 				})
 
@@ -204,8 +204,8 @@ func TestDiscover(t *testing.T) {
 							content[v] = true
 						}
 
-						So(content[metric{Name: "inno/stat1", Call: CALL_INNODB}], ShouldBeTrue)
-						So(content[metric{Name: "inno/stat2", Call: CALL_INNODB}], ShouldBeTrue)
+						So(content[metric{Name: "inno/stat1", Call: callInnoDB}], ShouldBeTrue)
+						So(content[metric{Name: "inno/stat2", Call: callInnoDB}], ShouldBeTrue)
 					})
 
 				})
@@ -229,7 +229,7 @@ func TestDiscover(t *testing.T) {
 
 			Convey("does not request innodb data", func() {
 
-			source.AssertNotCalled(t, "GetInnodb")
+				source.AssertNotCalled(t, "GetInnodb")
 			})
 
 		})
@@ -259,8 +259,8 @@ func TestDiscover(t *testing.T) {
 						content[v] = true
 					}
 
-					So(content[metric{Name: "master/stat1", Call: CALL_MASTER}], ShouldBeTrue)
-					So(content[metric{Name: "master/stat2", Call: CALL_MASTER}], ShouldBeTrue)
+					So(content[metric{Name: "master/stat1", Call: callMaster}], ShouldBeTrue)
+					So(content[metric{Name: "master/stat2", Call: callMaster}], ShouldBeTrue)
 				})
 
 			})
@@ -292,8 +292,8 @@ func TestDiscover(t *testing.T) {
 						content[v] = true
 					}
 
-					So(content[metric{Name: "slave/stat1", Call: CALL_SLAVE}], ShouldBeTrue)
-					So(content[metric{Name: "slave/stat2", Call: CALL_SLAVE}], ShouldBeTrue)
+					So(content[metric{Name: "slave/stat1", Call: callSlave}], ShouldBeTrue)
+					So(content[metric{Name: "slave/stat2", Call: callSlave}], ShouldBeTrue)
 
 				})
 
@@ -330,28 +330,28 @@ func TestCollect(t *testing.T) {
 
 			Convey("Global", func() {
 
-				sut.Collect(map[int]bool{CALL_GLOBAL: true})
+				sut.Collect(map[int]bool{callGlobal: true})
 				source.AssertCalled(t, "GetStatus", true)
 
 			})
 
 			Convey("InnoDB", func() {
 
-				sut.Collect(map[int]bool{CALL_INNODB: true})
+				sut.Collect(map[int]bool{callInnoDB: true})
 				source.AssertCalled(t, "GetInnodb")
 
 			})
 
 			Convey("MasterStatus", func() {
 
-				sut.Collect(map[int]bool{CALL_MASTER: true})
+				sut.Collect(map[int]bool{callMaster: true})
 				source.AssertCalled(t, "GetMasterStatus")
 
 			})
 
 			Convey("SlaveStatus", func() {
 
-				sut.Collect(map[int]bool{CALL_SLAVE: true})
+				sut.Collect(map[int]bool{callSlave: true})
 				source.AssertCalled(t, "GetSlaveStatus")
 
 			})
@@ -362,28 +362,28 @@ func TestCollect(t *testing.T) {
 
 			Convey("Global", func() {
 
-				sut.Collect(map[int]bool{CALL_INNODB: true, CALL_MASTER: true, CALL_SLAVE: true})
+				sut.Collect(map[int]bool{callInnoDB: true, callMaster: true, callSlave: true})
 				source.AssertNotCalled(t, "GetStatus")
 
 			})
 
 			Convey("InnoDB", func() {
 
-				sut.Collect(map[int]bool{CALL_GLOBAL: true, CALL_MASTER: true, CALL_SLAVE: true})
+				sut.Collect(map[int]bool{callGlobal: true, callMaster: true, callSlave: true})
 				source.AssertNotCalled(t, "GetInnodb")
 
 			})
 
 			Convey("MasterStatus", func() {
 
-				sut.Collect(map[int]bool{CALL_GLOBAL: true, CALL_INNODB: true, CALL_SLAVE: true})
+				sut.Collect(map[int]bool{callGlobal: true, callInnoDB: true, callSlave: true})
 				source.AssertNotCalled(t, "GetMasterStatus")
 
 			})
 
 			Convey("SlaveStatus", func() {
 
-				sut.Collect(map[int]bool{CALL_GLOBAL: true, CALL_MASTER: true, CALL_INNODB: true})
+				sut.Collect(map[int]bool{callGlobal: true, callMaster: true, callInnoDB: true})
 				source.AssertNotCalled(t, "GetSlaveStatus")
 
 			})
@@ -404,14 +404,14 @@ func TestCollect(t *testing.T) {
 			Convey("Gauges are exposed as raw value", func() {
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 10, Type: stats.Gauge, IsNull: false}
-				dut1, _ := sut.Collect(map[int]bool{CALL_GLOBAL: true})
+				dut1, _ := sut.Collect(map[int]bool{callGlobal: true})
 
 				So(dut1["global/stat1"], ShouldAlmostEqual, 10, 0.1)
 
 				timeNow = func() time.Time { return time.Unix(102, 0) }
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Gauge, IsNull: false}
-				dut2, _ := sut.Collect(map[int]bool{CALL_GLOBAL: true})
+				dut2, _ := sut.Collect(map[int]bool{callGlobal: true})
 
 				So(dut2["global/stat1"], ShouldAlmostEqual, 20, 0.1)
 
@@ -420,15 +420,14 @@ func TestCollect(t *testing.T) {
 			Convey("Derives are exposed as ratio of change to time", func() {
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 10, Type: stats.Derive, IsNull: false}
-				dut1, _ := sut.Collect(map[int]bool{CALL_GLOBAL: true})
+				dut1, _ := sut.Collect(map[int]bool{callGlobal: true})
 
 				So(dut1["global/stat1"], ShouldAlmostEqual, 10, 0.1)
 
 				timeNow = func() time.Time { return time.Unix(102, 0) }
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Derive, IsNull: false}
-				dut2, _ := sut.Collect(map[int]bool{CALL_GLOBAL: true})
-
+				dut2, _ := sut.Collect(map[int]bool{callGlobal: true})
 				So(dut2["global/stat1"], ShouldAlmostEqual, 5, 0.1)
 
 			})
@@ -436,14 +435,14 @@ func TestCollect(t *testing.T) {
 			Convey("Counters are exposed as ratio of change to time", func() {
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 10, Type: stats.Counter, IsNull: false}
-				dut1, _ := sut.Collect(map[int]bool{CALL_GLOBAL: true})
+				dut1, _ := sut.Collect(map[int]bool{callGlobal: true})
 
 				So(dut1["global/stat1"], ShouldAlmostEqual, 10, 0.1)
 
 				timeNow = func() time.Time { return time.Unix(102, 0) }
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Counter, IsNull: false}
-				dut2, _ := sut.Collect(map[int]bool{CALL_GLOBAL: true})
+				dut2, _ := sut.Collect(map[int]bool{callGlobal: true})
 
 				So(dut2["global/stat1"], ShouldAlmostEqual, 5, 0.1)
 

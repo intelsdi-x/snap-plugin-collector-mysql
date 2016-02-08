@@ -22,25 +22,26 @@ package stats
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-
 	"reflect"
 	"strconv"
 	"strings"
 )
 
 const (
-	TYPE_GAUGE = iota
-	TYPE_DERIVE
-	TYPE_COUNTER
+	// Gauge metric type
+	Gauge = iota
+	// Derive metric type
+	Derive
+	// Counter metric type
+	Counter
 )
 
 const (
-	SLAVE_READ_MASTER_IDX         = 6
-	SLAVE_IO_RUNNING_IDX          = 10
-	SLAVE_SQL_RUNNING_IDX         = 11
-	SLAVE_EXEC_MASTER_LOG_POS_IDX = 21
-	SLAVE_SECONDS_BEHIND_IDX      = 32
+	slaveReadMasterIDX       = 6
+	slaveIoRunningIDX        = 10
+	slaveSQLRunningIDX       = 11
+	slaveExecMasterLogPosIDX = 21
+	slaveSecondsBehindIDX    = 32
 )
 
 // Stat describes single statistics.
@@ -53,53 +54,8 @@ type Stat struct {
 	IsNull bool
 }
 
-// toInt converts value to regardless of underlying type.
-// Can handle (u)int[8/16/32/64] and varchar string if it's numeric.
-func toInt(ifc interface{}) int64 {
-	if ifc == nil {
-		return 0
-	}
-	if bs, isBs := ifc.([]uint8); isBs {
-		v, err := strconv.Atoi(string(bs))
-		if err != nil {
-			panic(err)
-		}
-		return int64(v)
-	}
-	return reflect.ValueOf(ifc).Convert(reflect.TypeOf(int64(0))).Int()
-}
-
-// counter fills Stat structure appriopriately for counter type.
-func counter(val interface{}) Stat {
-	return Stat{Value: toInt(val), Type: TYPE_COUNTER, IsNull: val == nil}
-}
-
-// derive fills Stat structure appriopriately for derive type.
-func derive(val interface{}) Stat {
-	return Stat{Value: toInt(val), Type: TYPE_DERIVE, IsNull: val == nil}
-}
-
-// gauge fills Stat structure appriopriately for gauge type.
-func gauge(val interface{}) Stat {
-	return Stat{Value: toInt(val), Type: TYPE_GAUGE, IsNull: val == nil}
-}
-
 // Stats is collection of statistics accessible by name (which may include '/').
 type Stats map[string]Stat
-
-// parses version string returned by mysql to numeric value.
-// ex. 1.2.3 is conveted to 10203.
-func parseVersion(s string) uint {
-	dotsStr := strings.Split(strings.TrimSpace(s), "-")[0]
-	var a, b, c uint
-	fmt.Sscanf(dotsStr, "%d.%d.%d", &a, &b, &c)
-	return a*10000 + b*100 + c
-}
-
-// for mocking
-var sqlOpen = func(driverName, dataSourceName string) (*sql.DB, error) {
-	return sql.Open(driverName, dataSourceName)
-}
 
 // MySQLStats implements statistics gathering from MySQL database.
 type MySQLStats struct {
@@ -174,8 +130,8 @@ func New(connectionString string) (*MySQLStats, error) {
 // GetStatus queries database for status (query is dependendt on mysql version).
 // If query succeeded appriopriate collection of stats is returned, otherwise
 // error is returned.
-func (self *MySQLStats) GetStatus(parseInnodb bool) (Stats, error) {
-	rows, err := self.stats.Query()
+func (mysql *MySQLStats) GetStatus(parseInnodb bool) (Stats, error) {
+	rows, err := mysql.stats.Query()
 	if err != nil {
 		return nil, fmt.Errorf("status request failed: %v", err)
 	}
@@ -319,12 +275,12 @@ func (self *MySQLStats) GetStatus(parseInnodb bool) (Stats, error) {
 // GetInnodb queries database for innodb statistics.
 // If query succeeded appriopriate collection of stats is returned, otherwise
 // error is returned.
-func (self *MySQLStats) GetInnodb() (Stats, error) {
-	if !self.supportsInnodb {
+func (mysql *MySQLStats) GetInnodb() (Stats, error) {
+	if !mysql.supportsInnodb {
 		return nil, fmt.Errorf("innodb stats not supported on current version of mysql server")
 	}
 
-	rows, err := self.innodb.Query()
+	rows, err := mysql.innodb.Query()
 	if err != nil {
 		return nil, fmt.Errorf("innodb request failed: %v", err)
 	}
@@ -333,9 +289,9 @@ func (self *MySQLStats) GetInnodb() (Stats, error) {
 
 	for rows.Next() {
 		var name string
-		var value, type_dummy interface{}
+		var value, dummy interface{}
 
-		err = rows.Scan(&name, &value, &type_dummy)
+		err = rows.Scan(&name, &value, &dummy)
 		if err != nil {
 			return nil, fmt.Errorf("innodb request failed: %v", err)
 		}
@@ -468,8 +424,8 @@ func (self *MySQLStats) GetInnodb() (Stats, error) {
 // GetMasterStatus queries database for statistics related to it's master role.
 // If query succeeded appriopriate collection of stats is returned, otherwise
 // error is returned.
-func (self *MySQLStats) GetMasterStatus() (Stats, error) {
-	rows, err := self.master.Query()
+func (mysql *MySQLStats) GetMasterStatus() (Stats, error) {
+	rows, err := mysql.master.Query()
 	if err != nil {
 		return nil, fmt.Errorf("master request failed: %v", err)
 	}
@@ -477,9 +433,9 @@ func (self *MySQLStats) GetMasterStatus() (Stats, error) {
 	stats := Stats{}
 
 	for rows.Next() {
-		var dummy_0, position, dummy_2, dummy_3, dummy_4 interface{}
+		var dummy0, position, dummy2, dummy3, dummy4 interface{}
 
-		err = rows.Scan(&dummy_0, &position, &dummy_2, &dummy_3, &dummy_4)
+		err = rows.Scan(&dummy0, &position, &dummy2, &dummy3, &dummy4)
 		if err != nil {
 			return nil, fmt.Errorf("master request failed: %v", err)
 		}
@@ -494,8 +450,8 @@ func (self *MySQLStats) GetMasterStatus() (Stats, error) {
 // GetSlaveStatus queries database for statistics related to it's slave role.
 // If query succeeded appriopriate collection of stats is returned, otherwise
 // error is returned.
-func (self *MySQLStats) GetSlaveStatus() (Stats, error) {
-	rows, err := self.slave.Query()
+func (mysql *MySQLStats) GetSlaveStatus() (Stats, error) {
+	rows, err := mysql.slave.Query()
 	if err != nil {
 		return nil, fmt.Errorf("slave request failed: %v", err)
 	}
@@ -516,7 +472,7 @@ func (self *MySQLStats) GetSlaveStatus() (Stats, error) {
 		fields := make([]interface{}, len(cols))
 		fieldPtrs := make([]interface{}, len(fields))
 
-		for i, _ := range fieldPtrs {
+		for i := range fieldPtrs {
 			fieldPtrs[i] = &fields[i]
 		}
 
@@ -524,9 +480,9 @@ func (self *MySQLStats) GetSlaveStatus() (Stats, error) {
 		if err != nil {
 			return nil, fmt.Errorf("slave request failed: %v", err)
 		}
-		stats["mysql_log_position/slave-read"] = counter(fields[SLAVE_READ_MASTER_IDX])
-		stats["mysql_log_position/slave-exec"] = counter(fields[SLAVE_EXEC_MASTER_LOG_POS_IDX])
-		stats["mysql_log_position/time_offset"] = gauge(fields[SLAVE_SECONDS_BEHIND_IDX])
+		stats["mysql_log_position/slave-read"] = counter(fields[slaveReadMasterIDX])
+		stats["mysql_log_position/slave-exec"] = counter(fields[slaveExecMasterLogPosIDX])
+		stats["mysql_log_position/time_offset"] = gauge(fields[slaveSecondsBehindIDX])
 
 		return stats, nil
 	}
@@ -535,6 +491,51 @@ func (self *MySQLStats) GetSlaveStatus() (Stats, error) {
 }
 
 // Close closes sql resources.
-func (self *MySQLStats) Close() error {
-	return self.db.Close()
+func (mysql *MySQLStats) Close() error {
+	return mysql.db.Close()
+}
+
+// parses version string returned by mysql to numeric value.
+// ex. 1.2.3 is conveted to 10203.
+func parseVersion(s string) uint {
+	dotsStr := strings.Split(strings.TrimSpace(s), "-")[0]
+	var a, b, c uint
+	fmt.Sscanf(dotsStr, "%d.%d.%d", &a, &b, &c)
+	return a*10000 + b*100 + c
+}
+
+// for mocking
+var sqlOpen = func(driverName, dataSourceName string) (*sql.DB, error) {
+	return sql.Open(driverName, dataSourceName)
+}
+
+// toInt converts value to regardless of underlying type.
+// Can handle (u)int[8/16/32/64] and varchar string if it's numeric.
+func toInt(ifc interface{}) int64 {
+	if ifc == nil {
+		return 0
+	}
+	if bs, isBs := ifc.([]uint8); isBs {
+		v, err := strconv.Atoi(string(bs))
+		if err != nil {
+			panic(err)
+		}
+		return int64(v)
+	}
+	return reflect.ValueOf(ifc).Convert(reflect.TypeOf(int64(0))).Int()
+}
+
+// counter fills Stat structure appriopriately for counter type.
+func counter(val interface{}) Stat {
+	return Stat{Value: toInt(val), Type: Counter, IsNull: val == nil}
+}
+
+// derive fills Stat structure appriopriately for derive type.
+func derive(val interface{}) Stat {
+	return Stat{Value: toInt(val), Type: Derive, IsNull: val == nil}
+}
+
+// gauge fills Stat structure appriopriately for gauge type.
+func gauge(val interface{}) Stat {
+	return Stat{Value: toInt(val), Type: Gauge, IsNull: val == nil}
 }

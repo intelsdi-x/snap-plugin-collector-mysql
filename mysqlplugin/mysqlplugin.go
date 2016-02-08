@@ -43,30 +43,6 @@ const (
 	Type = plugin.CollectorPluginType
 )
 
-// prefix of all namespaces
-var namespacePrefix = []string{"intel", "mysql"}
-
-// makeName makes namespace from metric path (with segments separated by '/' ) and
-// namespace prefix
-func makeName(m string) []string {
-	res := []string{}
-	res = append(res, namespacePrefix...)
-	res = append(res, strings.Split(m, "/")...)
-
-	return res
-}
-
-// parseName extracts metric path from namespace by trimming prefix and concatenating
-// remaining segments with '/'.
-func parseName(ns []string) string {
-	return strings.Join(ns[len(namespacePrefix):], "/")
-}
-
-type collector interface {
-	Discover() ([]metric, error)
-	Collect(metrics map[int]bool) (map[string]interface{}, error)
-}
-
 // MySQLPlugin is implementation of plugin.Plugin interface.
 type MySQLPlugin struct {
 	initialized      bool
@@ -77,52 +53,13 @@ type MySQLPlugin struct {
 	mysql collector
 }
 
-// for mocking
-var makeStats = func(connectionString string) (mysqlSource, error) { return stats.New(connectionString) }
-var makeCollector = func(statsSource mysqlSource, useInnodb bool) collector { return NewCollector(statsSource, useInnodb) }
+// New returns initialized instance of MySQL Plugin collector
+func New() *MySQLPlugin {
+	self := new(MySQLPlugin)
+	self.initializedMutex = new(sync.Mutex)
+	self.callDiscovery = map[string]int{}
 
-// init performs one time initialization of plugin. Reads configuration from cfg
-// and constructs all service objets that will be used during plugin's lifetime.
-// returns error if initialization failed.
-func (p *MySQLPlugin) init(cfg interface{}) error {
-	p.initializedMutex.Lock()
-	defer p.initializedMutex.Unlock()
-
-	if p.initialized {
-		return nil
-	}
-
-	cfgItems, err := config.GetConfigItems(cfg, []string{"mysql_connection_string", "mysql_use_innodb"})
-
-	if err != nil {
-		panic(fmt.Errorf("plugin initalization failed : [%v]", err))
-	}
-
-	sqlStats, err := makeStats(cfgItems["mysql_connection_string"].(string))
-
-	if err != nil {
-		return err
-	}
-
-	p.mysql = makeCollector(sqlStats, cfgItems["mysql_use_innodb"].(bool))
-
-	metrics, err := p.mysql.Discover()
-	if err != nil {
-
-		// for easier mocking
-		if sqlStats != nil {
-			sqlStats.Close()
-		}
-
-		return err
-	}
-
-	for _, m := range metrics {
-		p.callDiscovery[m.Name] = m.Call
-	}
-
-	p.initialized = true
-	return nil
+	return self
 }
 
 // CollectMetrics finds required request ids required to collect given metrics,
@@ -185,28 +122,92 @@ func (p *MySQLPlugin) GetMetricTypes(cfg plugin.PluginConfigType) ([]plugin.Plug
 
 	mts := []plugin.PluginMetricType{}
 
-	for k, _ := range p.callDiscovery {
+	for k := range p.callDiscovery {
 		mts = append(mts, plugin.PluginMetricType{Namespace_: makeName(k)})
 	}
 
 	return mts, nil
 }
 
-// GetConfigPolicy
+// GetConfigPolicy returns plugin config policy
 func (p *MySQLPlugin) GetConfigPolicy() (*cpolicy.ConfigPolicy, error) {
 	c := cpolicy.New()
 	return c, nil
 }
 
-func New() *MySQLPlugin {
-	self := new(MySQLPlugin)
-	self.initializedMutex = new(sync.Mutex)
-	self.callDiscovery = map[string]int{}
-
-	return self
-}
-
-// Returns plugin's metadata
+// Meta returns plugin's metadata
 func Meta() *plugin.PluginMeta {
 	return plugin.NewPluginMeta(Name, Version, Type, []string{plugin.SnapGOBContentType}, []string{plugin.SnapGOBContentType})
+}
+
+// init performs one time initialization of plugin. Reads configuration from cfg
+// and constructs all service objets that will be used during plugin's lifetime.
+// returns error if initialization failed.
+func (p *MySQLPlugin) init(cfg interface{}) error {
+	p.initializedMutex.Lock()
+	defer p.initializedMutex.Unlock()
+
+	if p.initialized {
+		return nil
+	}
+
+	cfgItems, err := config.GetConfigItems(cfg, []string{"mysql_connection_string", "mysql_use_innodb"})
+
+	if err != nil {
+		panic(fmt.Errorf("plugin initalization failed : [%v]", err))
+	}
+
+	sqlStats, err := makeStats(cfgItems["mysql_connection_string"].(string))
+
+	if err != nil {
+		return err
+	}
+
+	p.mysql = makeCollector(sqlStats, cfgItems["mysql_use_innodb"].(bool))
+
+	metrics, err := p.mysql.Discover()
+	if err != nil {
+
+		// for easier mocking
+		if sqlStats != nil {
+			sqlStats.Close()
+		}
+
+		return err
+	}
+
+	for _, m := range metrics {
+		p.callDiscovery[m.Name] = m.Call
+	}
+
+	p.initialized = true
+	return nil
+}
+
+// for mocking
+var makeStats = func(connectionString string) (mysqlSource, error) { return stats.New(connectionString) }
+var makeCollector = func(statsSource mysqlSource, useInnodb bool) collector { return NewCollector(statsSource, useInnodb) }
+
+// prefix of all namespaces
+var namespacePrefix = []string{"intel", "mysql"}
+
+type collector interface {
+	Discover() ([]metric, error)
+	Collect(metrics map[int]bool) (map[string]interface{}, error)
+}
+
+// makeName makes namespace from metric path (with segments separated by '/' ) and
+// namespace prefix
+func makeName(m string) []string {
+	res := []string{}
+	res = append(res, namespacePrefix...)
+	res = append(res, strings.Split(m, "/")...)
+
+	return res
+}
+
+// parseName extracts metric path from namespace by trimming prefix and concatenating
+// remaining segments with '/'.
+func parseName(ns []string) string {
+	return strings.Join(ns[len(namespacePrefix):], "/")
 }
