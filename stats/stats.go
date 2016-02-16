@@ -25,6 +25,9 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	// don't remove this line, driver registration is done in module's init
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
