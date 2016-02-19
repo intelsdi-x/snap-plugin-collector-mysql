@@ -20,9 +20,12 @@ limitations under the License.
 package mysqlplugin
 
 import (
+	"fmt"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/intelsdi-x/snap-plugin-collector-mysql/stats"
+	"github.com/intelsdi-x/snap/core/serror"
 )
 
 const (
@@ -202,12 +205,16 @@ func (mc *metricCollector) updateStats(res map[string]interface{}, st stats.Stat
 				res[k] = float64(delta) / mv.CollectionTime.Sub(old.CollectionTime).Seconds()
 				mc.counters[k] = mv
 			} else {
-				res[k] = val(v)
 				if !v.IsNull {
+					res[k] = float64(val(v).(int64))
 					mc.counters[k] = mv
+				} else {
+					res[k] = float64(0)
+					f := map[string]interface{}{"metric": k}
+					se := serror.New(fmt.Errorf("Null as value of metric, null is represented as 0"), f)
+					log.WithFields(se.Fields()).Warn(se.String())
 				}
 			}
-
 		}
 	}
 }
