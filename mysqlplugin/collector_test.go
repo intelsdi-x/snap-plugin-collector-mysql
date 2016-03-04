@@ -407,6 +407,8 @@ func TestCollect(t *testing.T) {
 				dut1, _ := sut.Collect(map[int]bool{callGlobal: true})
 
 				So(dut1["global/stat1"], ShouldAlmostEqual, 10, 0.1)
+				_, ok := dut1["global/stat1"].(int64)
+				So(ok, ShouldBeTrue)
 
 				timeNow = func() time.Time { return time.Unix(102, 0) }
 
@@ -414,6 +416,8 @@ func TestCollect(t *testing.T) {
 				dut2, _ := sut.Collect(map[int]bool{callGlobal: true})
 
 				So(dut2["global/stat1"], ShouldAlmostEqual, 20, 0.1)
+				_, ok = dut2["global/stat1"].(int64)
+				So(ok, ShouldBeTrue)
 
 			})
 
@@ -421,30 +425,46 @@ func TestCollect(t *testing.T) {
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 10, Type: stats.Derive, IsNull: false}
 				dut1, _ := sut.Collect(map[int]bool{callGlobal: true})
-
 				So(dut1["global/stat1"], ShouldAlmostEqual, 10, 0.1)
+				_, ok := dut1["global/stat1"].(float64)
+				So(ok, ShouldBeTrue)
 
 				timeNow = func() time.Time { return time.Unix(102, 0) }
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Derive, IsNull: false}
 				dut2, _ := sut.Collect(map[int]bool{callGlobal: true})
 				So(dut2["global/stat1"], ShouldAlmostEqual, 5, 0.1)
+				_, ok = dut2["global/stat1"].(float64)
+				So(ok, ShouldBeTrue)
 
+				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Derive, IsNull: true}
+				dut3, _ := sut.Collect(map[int]bool{callGlobal: true})
+				So(dut3["global/stat1"], ShouldAlmostEqual, 0, 0.1)
+				_, ok = dut3["global/stat1"].(float64)
+				So(ok, ShouldBeTrue)
 			})
 
 			Convey("Counters are exposed as ratio of change to time", func() {
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 10, Type: stats.Counter, IsNull: false}
 				dut1, _ := sut.Collect(map[int]bool{callGlobal: true})
-
 				So(dut1["global/stat1"], ShouldAlmostEqual, 10, 0.1)
+				_, ok := dut1["global/stat1"].(float64)
+				So(ok, ShouldBeTrue)
 
 				timeNow = func() time.Time { return time.Unix(102, 0) }
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Counter, IsNull: false}
 				dut2, _ := sut.Collect(map[int]bool{callGlobal: true})
-
 				So(dut2["global/stat1"], ShouldAlmostEqual, 5, 0.1)
+				_, ok = dut2["global/stat1"].(float64)
+				So(ok, ShouldBeTrue)
+
+				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Derive, IsNull: true}
+				dut3, _ := sut.Collect(map[int]bool{callGlobal: true})
+				So(dut3["global/stat1"], ShouldAlmostEqual, 0, 0.1)
+				_, ok = dut3["global/stat1"].(float64)
+				So(ok, ShouldBeTrue)
 
 			})
 
