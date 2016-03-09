@@ -138,6 +138,7 @@ func (mysql *MySQLStats) GetStatus(parseInnodb bool) (Stats, error) {
 	if err != nil {
 		return nil, fmt.Errorf("status request failed: %v", err)
 	}
+	defer rows.Close()
 
 	stats := Stats{}
 
@@ -287,6 +288,7 @@ func (mysql *MySQLStats) GetInnodb() (Stats, error) {
 	if err != nil {
 		return nil, fmt.Errorf("innodb request failed: %v", err)
 	}
+	defer rows.Close()
 
 	stats := Stats{}
 
@@ -432,6 +434,7 @@ func (mysql *MySQLStats) GetMasterStatus() (Stats, error) {
 	if err != nil {
 		return nil, fmt.Errorf("master request failed: %v", err)
 	}
+	defer rows.Close()
 
 	stats := Stats{}
 
@@ -458,6 +461,7 @@ func (mysql *MySQLStats) GetSlaveStatus() (Stats, error) {
 	if err != nil {
 		return nil, fmt.Errorf("slave request failed: %v", err)
 	}
+	defer rows.Close()
 
 	stats := Stats{}
 
