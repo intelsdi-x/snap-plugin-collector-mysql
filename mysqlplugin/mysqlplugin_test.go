@@ -1,5 +1,3 @@
-// +build unit
-
 /*
 http://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -23,7 +21,6 @@ package mysqlplugin
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/intelsdi-x/snap/control/plugin"
@@ -36,6 +33,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/intelsdi-x/snap-plugin-collector-mysql/stats"
+	"github.com/intelsdi-x/snap/core"
 )
 
 type nullSqlsource struct {
@@ -79,7 +77,7 @@ func (self *collectorMock) Collect(metrics map[int]bool) (map[string]interface{}
 	return r0, args.Error(1)
 }
 
-func testingConfig() (cfg1 plugin.PluginConfigType, cfg2 *cdata.ConfigDataNode) {
+func testingConfig() (cfg1 plugin.ConfigType, cfg2 *cdata.ConfigDataNode) {
 	cfg1 = plugin.NewPluginConfigType()
 	cfg2 = cdata.NewNode()
 	cfg1.AddItem("mysql_connection_string", ctypes.ConfigValueStr{Value: "root:r00tme@tcp(localhost:3306)/"})
@@ -124,11 +122,11 @@ func TestGetMetricTypes(t *testing.T) {
 				content := map[string]bool{}
 
 				for _, v := range dut {
-					content[strings.Join(v.Namespace(), "/")] = true
+					content[v.Namespace().String()] = true
 				}
 
-				So(content["intel/mysql/aaa/bbb"], ShouldBeTrue)
-				So(content["intel/mysql/x/y/z"], ShouldBeTrue)
+				So(content["/intel/mysql/aaa/bbb"], ShouldBeTrue)
+				So(content["/intel/mysql/x/y/z"], ShouldBeTrue)
 
 			})
 
@@ -195,19 +193,19 @@ func TestCollectMetrics(t *testing.T) {
 
 		sut := New()
 
-		mts10 := make([]plugin.PluginMetricType, 10)
+		mts10 := make([]plugin.MetricType, 10)
 		metrics10 := make([]metric, 10)
 
 		for i, _ := range mts10 {
-			mts10[i] = plugin.PluginMetricType{Namespace_: []string{"intel", "mysql", fmt.Sprintf("stat%d", i)}, Config_: cfg2}
+			mts10[i] = plugin.MetricType{Namespace_: core.NewNamespace("intel", "mysql", fmt.Sprintf("stat%d", i)), Config_: cfg2}
 			metrics10[i] = metric{Name: fmt.Sprintf("stat%d", i), Call: i}
 
 		}
 
 		Convey("performs init even if GetMetricTypes was not called", func() {
 
-			mts := []plugin.PluginMetricType{
-				plugin.PluginMetricType{Namespace_: []string{"intel", "mysql", "aaa", "bbb"}, Config_: cfg2},
+			mts := []plugin.MetricType{
+				plugin.MetricType{Namespace_: core.NewNamespace("intel", "mysql", "aaa", "bbb"), Config_: cfg2},
 			}
 
 			mocked.On("Discover").Return([]metric{metric{Name: "aaa/bbb", Call: 1}, metric{Name: "x/y/z", Call: 2}}, nil)
@@ -238,7 +236,7 @@ func TestCollectMetrics(t *testing.T) {
 		Convey("omits uneccessary calls", func() {
 
 			for i, _ := range mts10 {
-				newMts := []plugin.PluginMetricType{}
+				newMts := []plugin.MetricType{}
 				newMts = append(newMts, mts10[0:i]...)
 				newMts = append(newMts, mts10[i+1:]...)
 
@@ -272,11 +270,11 @@ func TestCollectMetrics(t *testing.T) {
 
 			vals := map[string]interface{}{}
 			for _, v := range dut {
-				vals[strings.Join(v.Namespace(), "/")] = v.Data()
+				vals[v.Namespace().String()] = v.Data()
 			}
 
 			for _, v := range metrics10 {
-				So(vals["intel/mysql/"+v.Name], ShouldEqual, 100+v.Call)
+				So(vals["/intel/mysql/"+v.Name], ShouldEqual, 100+v.Call)
 				result[v.Name] = 100 + v.Call
 			}
 

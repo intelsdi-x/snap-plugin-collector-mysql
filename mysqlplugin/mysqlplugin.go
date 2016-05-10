@@ -21,7 +21,6 @@ package mysqlplugin
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -32,13 +31,14 @@ import (
 	"github.com/intelsdi-x/snap-plugin-utilities/config"
 
 	"github.com/intelsdi-x/snap-plugin-collector-mysql/stats"
+	"github.com/intelsdi-x/snap/core"
 )
 
 const (
 	// Name of plugin
 	Name = "mysql"
 	// Version of plugin
-	Version = 2
+	Version = 3
 	// Type of plugin
 	Type = plugin.CollectorPluginType
 )
@@ -66,7 +66,7 @@ func New() *MySQLPlugin {
 // asks collector service for metrics associated with these calls and returns
 // requested metrics. Error is returned when metric collection failed or plugin
 // initialization was unsuccessful.
-func (p *MySQLPlugin) CollectMetrics(mts []plugin.PluginMetricType) ([]plugin.PluginMetricType, error) {
+func (p *MySQLPlugin) CollectMetrics(mts []plugin.MetricType) ([]plugin.MetricType, error) {
 
 	if len(mts) > 0 {
 		err := p.init(mts[0])
@@ -79,17 +79,14 @@ func (p *MySQLPlugin) CollectMetrics(mts []plugin.PluginMetricType) ([]plugin.Pl
 		return mts, nil
 	}
 
-	// it's not worth to abort collection
-	// when only os.Hostname() raised error
-	host, _ := os.Hostname()
 	t := time.Now()
 
-	results := make([]plugin.PluginMetricType, len(mts))
+	results := make([]plugin.MetricType, len(mts))
 
 	calls := map[int]bool{}
 
 	for _, mt := range mts {
-		name := parseName(mt.Namespace())
+		name := parseName(mt.Namespace().Strings())
 		calls[p.callDiscovery[name]] = true
 	}
 
@@ -100,10 +97,9 @@ func (p *MySQLPlugin) CollectMetrics(mts []plugin.PluginMetricType) ([]plugin.Pl
 	}
 
 	for i, mt := range mts {
-		results[i] = plugin.PluginMetricType{
+		results[i] = plugin.MetricType{
 			Namespace_: mt.Namespace(),
-			Data_:      metrics[parseName(mt.Namespace())],
-			Source_:    host,
+			Data_:      metrics[parseName(mt.Namespace().Strings())],
 			Timestamp_: t,
 		}
 	}
@@ -113,17 +109,17 @@ func (p *MySQLPlugin) CollectMetrics(mts []plugin.PluginMetricType) ([]plugin.Pl
 
 // GetMetricTypes returns list of available metrics. If initialization failed
 // error is returned.
-func (p *MySQLPlugin) GetMetricTypes(cfg plugin.PluginConfigType) ([]plugin.PluginMetricType, error) {
+func (p *MySQLPlugin) GetMetricTypes(cfg plugin.ConfigType) ([]plugin.MetricType, error) {
 	err := p.init(cfg)
 
 	if err != nil {
 		return nil, err
 	}
 
-	mts := []plugin.PluginMetricType{}
+	mts := []plugin.MetricType{}
 
 	for k := range p.callDiscovery {
-		mts = append(mts, plugin.PluginMetricType{Namespace_: makeName(k)})
+		mts = append(mts, plugin.MetricType{Namespace_: core.NewNamespace(makeName(k)...)})
 	}
 
 	return mts, nil
@@ -151,7 +147,7 @@ func (p *MySQLPlugin) init(cfg interface{}) error {
 		return nil
 	}
 
-	cfgItems, err := config.GetConfigItems(cfg, []string{"mysql_connection_string", "mysql_use_innodb"})
+	cfgItems, err := config.GetConfigItems(cfg, "mysql_connection_string", "mysql_use_innodb")
 
 	if err != nil {
 		panic(fmt.Errorf("plugin initalization failed : [%v]", err))
