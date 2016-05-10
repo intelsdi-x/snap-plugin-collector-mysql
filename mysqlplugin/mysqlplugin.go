@@ -21,7 +21,6 @@ package mysqlplugin
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -80,9 +79,6 @@ func (p *MySQLPlugin) CollectMetrics(mts []plugin.MetricType) ([]plugin.MetricTy
 		return mts, nil
 	}
 
-	// it's not worth to abort collection
-	// when only os.Hostname() raised error
-	host, _ := os.Hostname()
 	t := time.Now()
 
 	results := make([]plugin.MetricType, len(mts))
@@ -101,16 +97,9 @@ func (p *MySQLPlugin) CollectMetrics(mts []plugin.MetricType) ([]plugin.MetricTy
 	}
 
 	for i, mt := range mts {
-		tags := mt.Tags()
-		if tags == nil {
-			tags = map[string]string{}
-		}
-		tags["hostname"] = host
-
 		results[i] = plugin.MetricType{
 			Namespace_: mt.Namespace(),
 			Data_:      metrics[parseName(mt.Namespace().Strings())],
-			Tags_:      tags,
 			Timestamp_: t,
 		}
 	}
