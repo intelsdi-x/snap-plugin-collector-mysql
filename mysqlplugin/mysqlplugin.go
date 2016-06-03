@@ -150,7 +150,7 @@ func (p *MySQLPlugin) init(cfg interface{}) error {
 	cfgItems, err := config.GetConfigItems(cfg, "mysql_connection_string", "mysql_use_innodb")
 
 	if err != nil {
-		panic(fmt.Errorf("plugin initalization failed : [%v]", err))
+		return fmt.Errorf("plugin initalization failed : [%v]", err)
 	}
 
 	sqlStats, err := makeStats(cfgItems["mysql_connection_string"].(string))
