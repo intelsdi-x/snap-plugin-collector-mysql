@@ -1,3 +1,5 @@
+// +build unit
+
 /*
 http://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -20,20 +22,19 @@ limitations under the License.
 package mysqlplugin
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/intelsdi-x/snap/control/plugin"
-	"github.com/intelsdi-x/snap/control/plugin/cpolicy"
-	"github.com/intelsdi-x/snap/core/cdata"
-	"github.com/intelsdi-x/snap/core/ctypes"
-
 	. "github.com/smartystreets/goconvey/convey"
-
 	"github.com/stretchr/testify/mock"
 
 	"github.com/intelsdi-x/snap-plugin-collector-mysql/stats"
+	"github.com/intelsdi-x/snap/control/plugin"
+	"github.com/intelsdi-x/snap/control/plugin/cpolicy"
 	"github.com/intelsdi-x/snap/core"
+	"github.com/intelsdi-x/snap/core/cdata"
+	"github.com/intelsdi-x/snap/core/ctypes"
 )
 
 type nullSqlsource struct {
@@ -142,7 +143,7 @@ func TestGetMetricTypes(t *testing.T) {
 
 			Convey("on stats construction", func() {
 
-				makeStats = func(connectionString string) (mysqlSource, error) { return nil, smthErr }
+				makeStats = func(connectionString string) (mysqlSource, error) { return nil, errors.New("x") }
 
 				_, dut_err := sut.GetMetricTypes(cfg1)
 
@@ -156,7 +157,7 @@ func TestGetMetricTypes(t *testing.T) {
 
 			Convey("on discovery", func() {
 
-				mock.On("Discover").Return(nil, smthErr)
+				mock.On("Discover").Return(nil, errors.New("x"))
 
 				_, dut_err := sut.GetMetricTypes(cfg1)
 
@@ -209,7 +210,7 @@ func TestCollectMetrics(t *testing.T) {
 			}
 
 			mocked.On("Discover").Return([]metric{metric{Name: "aaa/bbb", Call: 1}, metric{Name: "x/y/z", Call: 2}}, nil)
-			mocked.On("Collect", mock.Anything).Return(nil, smthErr)
+			mocked.On("Collect", mock.Anything).Return(nil, errors.New("x"))
 
 			sut.CollectMetrics(mts)
 
@@ -221,7 +222,7 @@ func TestCollectMetrics(t *testing.T) {
 
 			var dut interface{}
 			mocked.On("Discover").Return(metrics10, nil)
-			mocked.On("Collect", mock.Anything).Return(nil, smthErr).Run(func(args mock.Arguments) {
+			mocked.On("Collect", mock.Anything).Return(nil, errors.New("x")).Run(func(args mock.Arguments) {
 				dut = args.Get(0)
 			})
 
@@ -243,7 +244,7 @@ func TestCollectMetrics(t *testing.T) {
 				var dut interface{}
 				*mocked = collectorMock{}
 				mocked.On("Discover").Return(metrics10, nil)
-				mocked.On("Collect", mock.Anything).Return(nil, smthErr).Run(func(args mock.Arguments) {
+				mocked.On("Collect", mock.Anything).Return(nil, errors.New("x")).Run(func(args mock.Arguments) {
 					dut = args.Get(0)
 				})
 
@@ -283,7 +284,7 @@ func TestCollectMetrics(t *testing.T) {
 		Convey("returns error if collection failed", func() {
 
 			mocked.On("Discover").Return(metrics10, nil)
-			mocked.On("Collect", mock.Anything).Return(nil, smthErr)
+			mocked.On("Collect", mock.Anything).Return(nil, errors.New("x"))
 
 			_, dut_err := sut.CollectMetrics(mts10)
 

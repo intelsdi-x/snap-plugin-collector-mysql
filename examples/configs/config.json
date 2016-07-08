@@ -1,22 +1,14 @@
 {
     "control": {
-        "cache_ttl": "5s"
-    },
-    "scheduler": {
-        "default_deadline": "5s",
-        "worker_pool_size": 5
-    },
-    "plugins": {
-        "collector": {
-	    "mysql": {
-                "all": {
-                    "mysql_connection_string": "root:test@tcp(localhost:3306)",
-	                "mysql_use_innodb": false
+        "plugins": {
+            "collector": {
+                "mysql": {
+                    "all": {
+                        "mysql_connection_string": "myuser:mypasswd@tcp(localhost:3306)/",
+			 "mysql_use_innodb": true
+                    }
                 }
             }
-
-        },
-        "publisher": {},
-        "processor": {}
+        }
     }
 }

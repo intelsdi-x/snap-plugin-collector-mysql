@@ -1,7 +1,7 @@
 # snap collector plugin - mysql
 
 ## Collected Metrics
-his plugin has the ability to gather the following metrics:
+This plugin has the ability to gather the following metrics:
 
 Namespace | Description
 ----------|-----------------------
@@ -127,4 +127,4 @@ Namespace | Description
 /intel/mysql/mysql_commands/[subnamespace] | Available namespaces are evaluated in runtime, metrics indicate the number of times each statement has been executed.  The variable [subnamespace] means the command name.
 /intel/mysql/mysql_handler/[subnamespace] | Available namespaces are evaluated in runtime, metrics indicate the number of internal operations. The variable [subnamespace] means the operation name.
 
-The list of available metrics might be vary depending on the MySQL version or the system configuration.
+Notice, that the list of available metrics might vary depending on the MySQL version or the system configuration.

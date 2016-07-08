@@ -22,7 +22,7 @@ limitations under the License.
 package mysqlplugin
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -31,9 +31,6 @@ import (
 
 	"github.com/intelsdi-x/snap-plugin-collector-mysql/stats"
 )
-
-var smthErr = fmt.Errorf("smth")
-var statNil = &stats.Stats{}
 
 type statsMock struct {
 	mock.Mock
@@ -45,7 +42,7 @@ func (self *statsMock) GetStatus(parseInnodb bool) (stats.Stats, error) {
 	r0 := *args.Get(0).(*interface{})
 
 	if r0 == nil {
-		return nil, smthErr
+		return nil, errors.New("x")
 	}
 
 	err, isErr := (r0).(error)
@@ -63,7 +60,7 @@ func (self *statsMock) GetInnodb() (stats.Stats, error) {
 	r0 := *args.Get(0).(*interface{})
 
 	if r0 == nil {
-		return nil, smthErr
+		return nil, errors.New("x")
 	}
 
 	err, isErr := (r0).(error)
@@ -80,7 +77,7 @@ func (self *statsMock) GetMasterStatus() (stats.Stats, error) {
 	r0 := *args.Get(0).(*interface{})
 
 	if r0 == nil {
-		return nil, smthErr
+		return nil, errors.New("x")
 	}
 
 	err, isErr := (r0).(error)
@@ -97,7 +94,7 @@ func (self *statsMock) GetSlaveStatus() (stats.Stats, error) {
 	r0 := *args.Get(0).(*interface{})
 
 	if r0 == nil {
-		return nil, smthErr
+		return nil, errors.New("x")
 	}
 
 	err, isErr := (r0).(error)
@@ -403,68 +400,66 @@ func TestCollect(t *testing.T) {
 
 			Convey("Gauges are exposed as raw value", func() {
 
-				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 10, Type: stats.Gauge, IsNull: false}
+				(*mocked.statusPtr).(stats.Stats)["global/stat0"] = stats.Stat{Value: 10, Type: stats.Gauge, IsNull: false}
 				dut1, _ := sut.Collect(map[int]bool{callGlobal: true})
 
-				So(dut1["global/stat1"], ShouldAlmostEqual, 10, 0.1)
-				_, ok := dut1["global/stat1"].(int64)
+				So(dut1["global/stat0"], ShouldAlmostEqual, 10, 0.1)
+				_, ok := dut1["global/stat0"].(int64)
 				So(ok, ShouldBeTrue)
 
 				timeNow = func() time.Time { return time.Unix(102, 0) }
 
-				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Gauge, IsNull: false}
+				(*mocked.statusPtr).(stats.Stats)["global/stat0"] = stats.Stat{Value: 20, Type: stats.Gauge, IsNull: false}
 				dut2, _ := sut.Collect(map[int]bool{callGlobal: true})
 
-				So(dut2["global/stat1"], ShouldAlmostEqual, 20, 0.1)
-				_, ok = dut2["global/stat1"].(int64)
+				So(dut2["global/stat0"], ShouldAlmostEqual, 20, 0.1)
+				_, ok = dut2["global/stat0"].(int64)
 				So(ok, ShouldBeTrue)
-
 			})
 
 			Convey("Derives are exposed as ratio of change to time", func() {
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 10, Type: stats.Derive, IsNull: false}
 				dut1, _ := sut.Collect(map[int]bool{callGlobal: true})
-				So(dut1["global/stat1"], ShouldAlmostEqual, 10, 0.1)
-				_, ok := dut1["global/stat1"].(float64)
-				So(ok, ShouldBeTrue)
+
+				// derive's rate should be nil on the first measurement
+				So(dut1["global/stat1"], ShouldBeNil)
 
 				timeNow = func() time.Time { return time.Unix(102, 0) }
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Derive, IsNull: false}
 				dut2, _ := sut.Collect(map[int]bool{callGlobal: true})
+
 				So(dut2["global/stat1"], ShouldAlmostEqual, 5, 0.1)
-				_, ok = dut2["global/stat1"].(float64)
+				_, ok := dut2["global/stat1"].(float64)
 				So(ok, ShouldBeTrue)
 
 				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Derive, IsNull: true}
 				dut3, _ := sut.Collect(map[int]bool{callGlobal: true})
-				So(dut3["global/stat1"], ShouldAlmostEqual, 0, 0.1)
-				_, ok = dut3["global/stat1"].(float64)
-				So(ok, ShouldBeTrue)
+				// derive's rate should be nil when the current value is also nil
+				So(dut3["global/stat1"], ShouldBeNil)
 			})
 
 			Convey("Counters are exposed as ratio of change to time", func() {
 
-				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 10, Type: stats.Counter, IsNull: false}
+				(*mocked.statusPtr).(stats.Stats)["global/stat2"] = stats.Stat{Value: 10, Type: stats.Counter, IsNull: false}
 				dut1, _ := sut.Collect(map[int]bool{callGlobal: true})
-				So(dut1["global/stat1"], ShouldAlmostEqual, 10, 0.1)
-				_, ok := dut1["global/stat1"].(float64)
-				So(ok, ShouldBeTrue)
+				// counter's rate should be nil on the first measurement
+				So(dut1["global/stat2"], ShouldBeNil)
 
 				timeNow = func() time.Time { return time.Unix(102, 0) }
 
-				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Counter, IsNull: false}
+				(*mocked.statusPtr).(stats.Stats)["global/stat2"] = stats.Stat{Value: 20, Type: stats.Counter, IsNull: false}
 				dut2, _ := sut.Collect(map[int]bool{callGlobal: true})
-				So(dut2["global/stat1"], ShouldAlmostEqual, 5, 0.1)
-				_, ok = dut2["global/stat1"].(float64)
+
+				So(dut2["global/stat2"], ShouldAlmostEqual, 5, 0.1)
+				_, ok := dut2["global/stat2"].(float64)
 				So(ok, ShouldBeTrue)
 
-				(*mocked.statusPtr).(stats.Stats)["global/stat1"] = stats.Stat{Value: 20, Type: stats.Derive, IsNull: true}
+				(*mocked.statusPtr).(stats.Stats)["global/stat2"] = stats.Stat{Value: 20, Type: stats.Derive, IsNull: true}
 				dut3, _ := sut.Collect(map[int]bool{callGlobal: true})
-				So(dut3["global/stat1"], ShouldAlmostEqual, 0, 0.1)
-				_, ok = dut3["global/stat1"].(float64)
-				So(ok, ShouldBeTrue)
+				// counter's rate should be nil when the current value is also nil
+				So(dut3["global/stat2"], ShouldBeNil)
 
 			})
 
