@@ -130,8 +130,8 @@ func New(connectionString string) (*MySQLStats, error) {
 
 }
 
-// GetStatus queries database for status (query is dependendt on mysql version).
-// If query succeeded appriopriate collection of stats is returned, otherwise
+// GetStatus queries database for status (query is dependent on mysql version).
+// If query succeeded appropriate collection of stats is returned, otherwise
 // error is returned.
 func (mysql *MySQLStats) GetStatus(parseInnodb bool) (Stats, error) {
 	rows, err := mysql.stats.Query()
@@ -454,7 +454,7 @@ func (mysql *MySQLStats) GetMasterStatus() (Stats, error) {
 }
 
 // GetSlaveStatus queries database for statistics related to it's slave role.
-// If query succeeded appriopriate collection of stats is returned, otherwise
+// If query succeeded appropriate collection of stats is returned, otherwise
 // error is returned.
 func (mysql *MySQLStats) GetSlaveStatus() (Stats, error) {
 	rows, err := mysql.slave.Query()
@@ -503,7 +503,7 @@ func (mysql *MySQLStats) Close() error {
 }
 
 // parses version string returned by mysql to numeric value.
-// ex. 1.2.3 is conveted to 10203.
+// ex. 1.2.3 is converted to 10203.
 func parseVersion(s string) uint {
 	dotsStr := strings.Split(strings.TrimSpace(s), "-")[0]
 	var a, b, c uint
@@ -532,17 +532,17 @@ func toInt(ifc interface{}) int64 {
 	return reflect.ValueOf(ifc).Convert(reflect.TypeOf(int64(0))).Int()
 }
 
-// counter fills Stat structure appriopriately for counter type.
+// counter fills Stat structure appropriately for counter type.
 func counter(val interface{}) Stat {
 	return Stat{Value: toInt(val), Type: Counter, IsNull: val == nil}
 }
 
-// derive fills Stat structure appriopriately for derive type.
+// derive fills Stat structure appropriately for derive type.
 func derive(val interface{}) Stat {
 	return Stat{Value: toInt(val), Type: Derive, IsNull: val == nil}
 }
 
-// gauge fills Stat structure appriopriately for gauge type.
+// gauge fills Stat structure appropriately for gauge type.
 func gauge(val interface{}) Stat {
 	return Stat{Value: toInt(val), Type: Gauge, IsNull: val == nil}
 }

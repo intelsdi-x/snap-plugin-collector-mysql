@@ -21,11 +21,11 @@ package mysqlplugin
 
 import (
 	"fmt"
+	"math"
+	"os"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/intelsdi-x/snap-plugin-collector-mysql/stats"
-	"github.com/intelsdi-x/snap/core/serror"
 )
 
 const (
@@ -34,6 +34,9 @@ const (
 	callMaster
 	callSlave
 )
+
+var width32bit = math.Pow(2, 32.0)
+var width64bit = math.Pow(2, 64.0)
 
 // NewCollector constructs new metricCollector that will query given statsSource.
 // useInnodb indicates if innodb statistics are gathered (and gathering will
@@ -47,7 +50,7 @@ func NewCollector(statsSource mysqlSource, useInnodb bool) *metricCollector {
 }
 
 // Collect performs given set of calls (indicated by true value in metrics map).
-// returns map of metric values (accessible by metric name). If any of requesed
+// returns map of metric values (accessible by metric name). If any of requested
 // calls fail error is returned.
 func (mc *metricCollector) Collect(metrics map[int]bool) (map[string]interface{}, error) {
 
@@ -154,7 +157,7 @@ type metricValue struct {
 }
 
 // metricCollector implements logic for discovering available metrics
-// and associated quieries, performing given set of queries and performing
+// and associated queries, performing given set of queries and performing
 // rate calculation.
 type metricCollector struct {
 	StatsSource mysqlSource
@@ -181,40 +184,58 @@ func val(s stats.Stat) interface{} {
 }
 
 // updateStats adds metrics from st to res. While gauges are copied as they are, values for
-// conters and derives are differentiated and represents rate of change in time.
-// If counter or derive is collected first time (or last time was null)
-// it's rate equals to raw value as it was gauge.
+// counters and derives are differentiated and represents rate of change in time.
+// and for them send a null on the first measurement (or if the last time was null too)
 func (mc *metricCollector) updateStats(res map[string]interface{}, st stats.Stats) {
-	t := timeNow()
+
 	for k, v := range st {
-		if v.Type == stats.Gauge {
+		switch v.Type {
+		case stats.Gauge:
 			res[k] = val(v)
-		} else {
-			//doesn't matter if it's counter or derive
 
-			mv := metricValue{Value: v.Value, CollectionTime: t}
-
+		case stats.Derive, stats.Counter:
 			if v.IsNull {
+				res[k] = nil
 				delete(mc.counters, k)
+				continue
 			}
+
+			mv := metricValue{Value: v.Value, CollectionTime: timeNow()}
 
 			old, ok := mc.counters[k]
 
-			if ok {
-				delta := mv.Value - old.Value
-				res[k] = float64(delta) / mv.CollectionTime.Sub(old.CollectionTime).Seconds()
+			if !ok {
+				// for metrics representing a rate of change
+				// send a null on the first measurement
+				res[k] = nil
 				mc.counters[k] = mv
-			} else {
-				if !v.IsNull {
-					res[k] = float64(val(v).(int64))
-					mc.counters[k] = mv
-				} else {
-					res[k] = float64(0)
-					f := map[string]interface{}{"metric": k}
-					se := serror.New(fmt.Errorf("Null as value of metric, null is represented as 0"), f)
-					log.WithFields(se.Fields()).Warn(se.String())
-				}
+				continue
 			}
+
+			delta := float64(mv.Value - old.Value)
+
+			if v.Type == stats.Counter {
+				// for counters the behaviour differs when value_new < value_old
+				// and wrapping around should be taken into account
+
+				if delta < 0 {
+					//set wrapper width to 64 bits width as default
+					wrapperWidth := width64bit
+					if float64(old.Value) < width32bit {
+						wrapperWidth = width32bit
+					}
+
+					delta = wrapperWidth + delta
+				}
+
+			}
+
+			res[k] = delta / mv.CollectionTime.Sub(old.CollectionTime).Seconds()
+
+			mc.counters[k] = mv
+
+		default:
+			fmt.Fprintln(os.Stderr, "Metric `", k, "` cannot be classified as a one of the supported data type (gauge, derive or counter)")
 		}
 	}
 }

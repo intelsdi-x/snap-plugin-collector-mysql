@@ -7,9 +7,7 @@
     "workflow": {
         "collect": {
             "metrics": {
-                "/intel/mysql/threads/running": {},
-                "/intel/mysql/mysql_commands/alter_tablespace": {},
-                "/intel/mysql/operations/innodb_rwlock_s_spin_rounds": {}
+                "/intel/mysql/*": {}
             },
             "config": {},
             "process": null,

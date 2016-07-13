@@ -38,7 +38,7 @@ const (
 	// Name of plugin
 	Name = "mysql"
 	// Version of plugin
-	Version = 3
+	Version = 4
 	// Type of plugin
 	Type = plugin.CollectorPluginType
 )
@@ -47,10 +47,8 @@ const (
 type MySQLPlugin struct {
 	initialized      bool
 	initializedMutex *sync.Mutex
-
-	callDiscovery map[string]int
-
-	mysql collector
+	callDiscovery    map[string]int
+	mysql            collector
 }
 
 // New returns initialized instance of MySQL Plugin collector
@@ -58,7 +56,6 @@ func New() *MySQLPlugin {
 	self := new(MySQLPlugin)
 	self.initializedMutex = new(sync.Mutex)
 	self.callDiscovery = map[string]int{}
-
 	return self
 }
 

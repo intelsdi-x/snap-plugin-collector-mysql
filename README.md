@@ -131,7 +131,7 @@ Loaded Time: Fri, 20 Nov 2015 11:41:39 PST
 
 Create a task:
 ```
-$ $SNAP_PATH/bin/snapctl task create -t examples/tasks/mem-file.json
+$ $SNAP_PATH/bin/snapctl task create -t examples/tasks/task.json
 Using task manifest to create task
 Task created
 ID: 02dd7ff4-8106-47e9-8b86-70067cd0a850
