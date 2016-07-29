@@ -120,7 +120,7 @@ Create a task manifest file  (exemplary files in [examples/tasks/] (https://gith
 ```
 Load file plugin for publishing:
 ```
-$ $SNAP_PATH/bin/snapctl plugin load $SNAP_PATH/plugin/snap-publisher-file
+$ $SNAP_PATH/bin/snapctl plugin load $SNAP_PATH/plugin/snap-plugin-publisher-mock-file
 Plugin loaded
 Name: file
 Version: 3
