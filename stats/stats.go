@@ -193,6 +193,8 @@ func (mysql *MySQLStats) GetStatus(parseInnodb bool) (Stats, error) {
 				stats["threads/cached"] = gauge(value)
 			case "Threads_created":
 				stats["total_threads/created"] = derive(value)
+			case "Slow_queries":
+				stats["slow/queries"] = counter(value)
 			}
 
 			if parseInnodb {

@@ -130,5 +130,6 @@ Namespace | Type |Description
 /intel/mysql/mysql_sort/scan |counter| The number of sorts that were done by scanning the table.
 /intel/mysql/mysql_commands/[subnamespace] |counter| Available namespaces are evaluated in runtime, metrics indicate the number of times each statement has been executed.  The variable [subnamespace] means the command name.
 /intel/mysql/mysql_handler/[subnamespace] |counter| Available namespaces are evaluated in runtime, metrics indicate the number of internal operations. The variable [subnamespace] means the operation name.
+/intel/mysql/slow_queries/slow_queries |counter| The number of queries that have taken more than long_query_time seconds. This counter increments regardless of whether the slow query log is enabled.
 
 Notice, that the list of available metrics might vary depending on the MySQL version or the system configuration.
