@@ -1,0 +1,19 @@
+package: github.com/intelsdi-x/snap-plugin-collector-mysql
+import:
+- package: github.com/go-sql-driver/mysql
+- package: github.com/intelsdi-x/snap-plugin-utilities
+  subpackages:
+  - config
+- package: github.com/intelsdi-x/snap
+  subpackages:
+  - control/plugin
+  - control/plugin/cpolicy
+  - core
+testImport:
+- package: github.com/DATA-DOG/go-sqlmock
+- package: github.com/smartystreets/goconvey
+  subpackages:
+  - convey
+- package: github.com/stretchr/testify
+  subpackages:
+  - mock
