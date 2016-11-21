@@ -1,24 +1,22 @@
 {
-    "version": 1,
-    "schedule": {
-        "type": "simple",
-        "interval": "1s"
-    },
-    "workflow": {
-        "collect": {
-            "metrics": {
-                "/intel/mysql/*": {}
-            },
-            "config": {},
-            "process": null,
-            "publish": [
-                {
-                    "plugin_name": "file",
-                    "config": {
-                        "file": "/tmp/published_mysql"
-                    }
-                }
-            ]
+  "version": 1,
+  "schedule": {
+    "type": "simple",
+    "interval": "1s"
+  },
+  "workflow": {
+    "collect": {
+      "metrics": {
+        "/intel/mysql/*": {}
+      },
+      "publish": [
+        {
+          "plugin_name": "file",
+          "config": {
+            "file": "/tmp/published_mysql"
+          }
         }
+      ]
     }
+  }
 }
