@@ -53,7 +53,7 @@ This builds the plugin in `./build`
 ## Documentation
 
 ###Global config
-Global configuration files are described in [snap's documentation](https://github.com/intelsdi-x/snap/blob/master/docs/SNAPD_CONFIGURATION.md). You have to add `"mysql"` section with following entries:
+Global configuration files are described in [snap's documentation](https://github.com/intelsdi-x/snap/blob/master/docs/SNAPTELD_CONFIGURATION.md). You have to add `"mysql"` section with following entries:
 
  - `"mysql_connection_string"` -  it's DSN with format described [here](https://github.com/go-sql-driver/mysql#dsn-data-source-name).  ex. `"root:r00tme@tcp(localhost:3306)/"` where `root` is username and `r00tme` is password, `localhost` is host address and `3306` is port where mysql is listening.
  - `"mysql_use_innodb"` - possible values are `true` and `false`. Specifies if InnoDB statistics are collected. If you set this value to true and they are unavailable plugin will fail to start.
@@ -70,9 +70,9 @@ Example running mysql and writing data to a file using [snap-plugin-publisher-fi
 Create Global Config, see examples in [examples/configs/] (https://github.com/intelsdi-x/snap-plugin-collector-mysql/blob/master/examples/configs/).
 
 Set up the [Snap framework](https://github.com/intelsdi-x/snap/blob/master/README.md#getting-started),
-in one terminal window, run `snapd` (in this case with logging set to 1, trust disabled and global configuration saved in config.json):
+in one terminal window, run `snapteld` (in this case with logging set to 1, trust disabled and global configuration saved in config.json):
 ```
-$ snapd -l 1 -t 0 --config config.json
+$ snapteld -l 1 -t 0 --config config.json
 ```
 
 In another terminal window:
@@ -81,13 +81,13 @@ Download and load Snap plugins:
 ```
 $ wget http://snap.ci.snap-telemetry.io/plugins/snap-plugin-publisher-file/latest/linux/x86_64/snap-plugin-publisher-file
 $ wget http://snap.ci.snap-telemetry.io/plugins/snap-plugin-collector-mysql/latest/linux/x86_64/snap-plugin-collector-mysql
-$ snapctl plugin load snap-plugin-publisher-file
-$ snapctl plugin load snap-plugin-collector-mysql
+$ snaptel plugin load snap-plugin-publisher-file
+$ snaptel plugin load snap-plugin-collector-mysql
 ```
 
 See available metrics for your system
 ```
-$ snapctl metric list
+$ snaptel metric list
 ```
 
 Create a task manifest file  (exemplary files in [examples/tasks/] (https://github.com/intelsdi-x/snap-plugin-collector-mysql/blob/master/examples/tasks/)):
@@ -119,12 +119,12 @@ Create a task manifest file  (exemplary files in [examples/tasks/] (https://gith
 
 Create a task:
 ```
-$ snapctl task create -t examples/tasks/task.json
+$ snaptel task create -t examples/tasks/task.json
 ```
 
 Stop previously created task:
 ```
-$ snapctl task stop <task_id>
+$ snaptel task stop <task_id>
 ```
 
 ### Roadmap
