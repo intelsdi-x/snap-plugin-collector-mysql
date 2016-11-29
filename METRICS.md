@@ -63,9 +63,11 @@ Namespace | Type |Description
 /intel/mysql/mysql_innodb_rows/inserted |counter| The number of rows inserted into InnoDB tables.
 /intel/mysql/mysql_innodb_rows/read |counter| The number of rows read from InnoDB tables.
 /intel/mysql/mysql_innodb_rows/updated |counter| The number of rows updated in InnoDB tables.
+/intel/mysql/mysql_locks/immediate |counter| The number of times that a request for a table lock could be granted immediately.
 /intel/mysql/mysql_locks/lock_deadlocks |counter| The number of deadlocks.
 /intel/mysql/mysql_locks/lock_row_lock_current_waits |derive| The number of row locks currently being waited for (innodb_row_lock_current_waits).
 /intel/mysql/mysql_locks/lock_timeouts |derive| The number of row locks currently being waited for (innodb_row_lock_current_waits).
+/intel/mysql/mysql_locks/waited |counter| The number of times that a request for a table lock could not be granted immediately and a wait was needed.
 /intel/mysql/mysql_log_position/master-bin |counter| The position of  the binary log file of the master.
 /intel/mysql/mysql_log_position/slave-exec |counter|  The position in the current master binary log file to which the SQL thread has read and executed, marking the start of the next transaction or event to be processed. 
 /intel/mysql/mysql_log_position/slave-read |counter| The position in the current master binary log file up to which the I/O thread has read. 
@@ -117,8 +119,6 @@ Namespace | Type |Description
 /intel/mysql/threads/connected |gauge| The number of currently open connections. 
 /intel/mysql/threads/running |gauge|  The number of threads that are not sleeping.
 /intel/mysql/total_threads/created |derive| The number of threads created to handle connections.
-/intel/mysql/mysql_locks/immediate |counter| The number of times that a request for a table lock could be granted immediately.
-/intel/mysql/mysql_locks/waited |counter| The number of times that a request for a table lock could not be granted immediately and a wait was needed.
 /intel/mysql/mysql_select/full_join |counter| The number of joins that perform table scans because they do not use indexes. If this value is not 0, you should carefully check the indexes of your tables.
 /intel/mysql/mysql_select/full_range_join |counter| The number of joins that used a range search on a reference table.
 /intel/mysql/mysql_select/range |counter| The number of joins that used ranges on the first table. 
@@ -130,6 +130,6 @@ Namespace | Type |Description
 /intel/mysql/mysql_sort/scan |counter| The number of sorts that were done by scanning the table.
 /intel/mysql/mysql_commands/[subnamespace] |counter| Available namespaces are evaluated in runtime, metrics indicate the number of times each statement has been executed.  The variable [subnamespace] means the command name.
 /intel/mysql/mysql_handler/[subnamespace] |counter| Available namespaces are evaluated in runtime, metrics indicate the number of internal operations. The variable [subnamespace] means the operation name.
-/intel/mysql/slow_queries/slow_queries |counter| The number of queries that have taken more than long_query_time seconds. This counter increments regardless of whether the slow query log is enabled.
+/intel/mysql/slow/queries |counter| The number of queries that have taken more than long_query_time seconds. This counter increments regardless of whether the slow query log is enabled.
 
 Notice, that the list of available metrics might vary depending on the MySQL version or the system configuration.
