@@ -25,7 +25,7 @@ Namespace | Type |Description
 /intel/mysql/gauge/buffer_pool_pages_misc |gauge| Buffer pages for misc use such as row locks or the adaptive hash index (innodb_buffer_pool_pages_misc).
 /intel/mysql/gauge/buffer_pool_pages_total |gauge| Total buffer pool size in pages (innodb_buffer_pool_pages_total).
 /intel/mysql/gauge/file_num_open_files |gauge|  The number of files currently open (innodb_num_open_files).
-/intel/mysql/gauge/innodb_activity_count |gauge| Th number of files currently open (innodb_num_open_files).
+/intel/mysql/gauge/innodb_activity_count |gauge| The number of files currently open (innodb_num_open_files).
 /intel/mysql/gauge/innodb_dblwr_page_size |gauge| InnoDB page size in bytes (innodb_page_size).
 /intel/mysql/gauge/trx_rseg_history_len |gauge| The length of the TRX_RSEG_HISTORY list.
 /intel/mysql/mysql_bpool_bytes/data |gauge| The total number of bytes in the InnoDB buffer pool containing data. The number includes both dirty and clean pages.
@@ -35,7 +35,7 @@ Namespace | Type |Description
 /intel/mysql/mysql_bpool_counters/read_ahead_evicted |counter| The number of pages read into the InnoDB buffer pool by the read-ahead background thread that were subsequently evicted without having been accessed by queries.
 /intel/mysql/mysql_bpool_counters/read_ahead_rnd |counter| The number of “random” read-aheads initiated by InnoDB. This happens when a query scans a large portion of a table but in random order.
 /intel/mysql/mysql_bpool_counters/read_requests |counter| The number of logical read requests. 
-/intel/mysql/mysql_bpool_counters/reads |counter| he number of logical reads that InnoDB could not satisfy from the buffer pool, and had to read directly from disk.
+/intel/mysql/mysql_bpool_counters/reads |counter| The number of logical reads that InnoDB could not satisfy from the buffer pool, and had to read directly from disk.
 /intel/mysql/mysql_bpool_counters/write_requests |counter| The number of writes done to the InnoDB buffer pool.
 /intel/mysql/mysql_bpool_pages/data |gauge| The number of pages in the InnoDB buffer pool containing data. The number includes both dirty and clean pages.
 /intel/mysql/mysql_bpool_pages/dirty |gauge| The total current number of bytes held in dirty pages in the InnoDB buffer pool.
